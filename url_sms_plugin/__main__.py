@@ -1,34 +1,37 @@
 from dynatrace_extension import Extension, Status, StatusValue
 
+from url_sms_plugin.config.settings import load_settings
+from url_sms_plugin.config.validator import ConfigurationError, validate_settings
+
 
 class ExtensionImpl(Extension):
+    def initialize(self) -> None:
+        """Load and validate the local activation configuration."""
+        try:
+            self.settings = load_settings(self.activation_config)
+            validate_settings(self.settings)
+        except ConfigurationError:
+            self.logger.exception("URL SMS Plugin configuration is invalid.")
+            raise
+
+        self.logger.info(
+            f"URL SMS Plugin initialized with {len(self.settings.urls)} configured URL(s); "
+            f"dry run: {self.settings.dry_run}."
+        )
+
     def query(self):
+        """Confirm that the local configuration is ready for URL checks.
+
+        URL checks, metrics, cache state, and SMS delivery are introduced in later stages.
         """
-        The query method is automatically scheduled to run every minute
-        """
-        self.logger.info("query method started for url_sms_plugin.")
+        self.logger.info(f"URL SMS Plugin query started for {len(self.settings.urls)} URL(s).")
 
-        for endpoint in self.activation_config["endpoints"]:
-            url = endpoint["url"]
-            # user = endpoint["user"]
-            # password = endpoint["password"]
-            self.logger.debug(f"Running endpoint with url '{url}'")
+        for target in self.settings.urls:
+            self.logger.debug("URL check is configured for %s.", target.url)
 
-            # Your extension code goes here, e.g.
-            # response = requests.get(url, auth=(user, password))
-
-            # Report metrics with
-            self.report_metric("metric_key", 1, dimensions={"key": "value"})
-
-        self.logger.info("query method ended for url_sms_plugin.")
+        self.logger.info("URL SMS Plugin query completed.")
 
     def fastcheck(self) -> Status:
-        """
-        Use to check if the extension can run.
-        If this Activegate cannot run this extension, you can
-        raise an Exception or return StatusValue.ERROR.
-        This does not run for OneAgent extensions.
-        """
         return Status(StatusValue.OK)
 
 

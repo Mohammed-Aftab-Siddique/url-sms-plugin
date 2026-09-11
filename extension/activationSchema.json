@@ -1,118 +1,182 @@
 {
   "types": {
-    "dynatrace.datasource.python:url_sms_plugin-endpoint": {
+    "urlTarget": {
       "type": "object",
-      "displayName": "Url_sms_plugin Endpoint",
-      "summaryPattern": "Url_sms_plugin {url}",
+      "summaryPattern": "{url}",
       "properties": {
         "url": {
           "displayName": "URL",
           "type": "text",
           "nullable": false,
-          "default": "",
           "constraints": [
             {
               "type": "LENGTH",
               "minLength": 1,
-              "maxLength": 500
+              "maxLength": 2048
             }
-          ],
-          "maxItems": 1
-        },
-        "user": {
-          "displayName": "User name",
-          "type": "text",
-          "nullable": false,
-          "default": "",
-          "constraints": [
-            {
-              "type": "LENGTH",
-              "minLength": 1,
-              "maxLength": 500
-            }
-          ],
-          "maxItems": 1
-        },
-        "password": {
-          "displayName": "Password",
-          "type": "secret",
-          "nullable": false,
-          "default": "",
-          "constraints": [
-            {
-              "type": "LENGTH",
-              "minLength": 1,
-              "maxLength": 500
-            }
-          ],
-          "maxItems": 1
+          ]
         }
       }
     },
-    "pythonRemote": {
+    "recipient": {
       "type": "object",
+      "summaryPattern": "{number}",
       "properties": {
-        "endpoints": {
-          "displayName": "Url_sms_plugin endpoint",
-          "type": "list",
-          "items": {
-            "type": {
-              "$ref": "#/types/dynatrace.datasource.python:url_sms_plugin-endpoint"
-            }
-          },
+        "number": {
+          "displayName": "Phone Number",
+          "type": "text",
           "nullable": false,
-          "minItems": 1,
-          "maxItems": 100,
-          "metaData": {
-            "addItemButton": "Add endpoint"
-          }
+          "constraints": [
+            {
+              "type": "LENGTH",
+              "minLength": 1,
+              "maxLength": 32
+            }
+          ]
         }
       }
     },
     "pythonLocal": {
       "type": "object",
       "properties": {
-        "endpoints": {
-          "displayName": "Url_sms_plugin endpoint",
+        "urls": {
+          "displayName": "URLs to Monitor",
           "type": "list",
-          "items": {
-            "type": {
-              "$ref": "#/types/dynatrace.datasource.python:url_sms_plugin-endpoint"
-            }
-          },
           "nullable": false,
           "minItems": 1,
-          "maxItems": 100,
+          "maxItems": 1000,
+          "items": {
+            "type": {
+              "$ref": "#/types/urlTarget"
+            }
+          },
           "metaData": {
-            "addItemButton": "Add endpoint"
+            "addItemButton": "Add URL"
           }
+        },
+        "l1Recipients": {
+          "displayName": "L1 Recipients",
+          "type": "list",
+          "nullable": false,
+          "minItems": 1,
+          "items": {
+            "type": {
+              "$ref": "#/types/recipient"
+            }
+          },
+          "metaData": {
+            "addItemButton": "Add Recipient"
+          }
+        },
+        "l2Recipients": {
+          "displayName": "L2 Recipients",
+          "type": "list",
+          "nullable": false,
+          "minItems": 1,
+          "items": {
+            "type": {
+              "$ref": "#/types/recipient"
+            }
+          },
+          "metaData": {
+            "addItemButton": "Add Recipient"
+          }
+        },
+        "l3Recipients": {
+          "displayName": "L3 Recipients",
+          "type": "list",
+          "nullable": false,
+          "minItems": 1,
+          "items": {
+            "type": {
+              "$ref": "#/types/recipient"
+            }
+          },
+          "metaData": {
+            "addItemButton": "Add Recipient"
+          }
+        },
+        "l2AfterMinutes": {
+          "displayName": "L2 Criticality Delay (minutes)",
+          "type": "integer",
+          "nullable": false,
+          "default": 30,
+          "constraints": [{"type": "RANGE", "minimum": 1, "maximum": 10080}]
+        },
+        "l3AfterMinutes": {
+          "displayName": "L3 Criticality Delay (minutes)",
+          "type": "integer",
+          "nullable": false,
+          "default": 60,
+          "constraints": [{"type": "RANGE", "minimum": 1, "maximum": 10080}]
+        },
+        "pollingInterval": {
+          "displayName": "Polling Interval (seconds)",
+          "type": "integer",
+          "nullable": false,
+          "default": 60,
+          "constraints": [{"type": "RANGE", "minimum": 1, "maximum": 86400}]
+        },
+        "maxRedirects": {
+          "displayName": "Maximum Redirects",
+          "type": "integer",
+          "nullable": false,
+          "default": 5,
+          "constraints": [{"type": "RANGE", "minimum": 0, "maximum": 20}]
+        },
+        "cacheRetentionMinutes": {
+          "displayName": "Cache Retention (minutes)",
+          "type": "integer",
+          "nullable": false,
+          "default": 1440,
+          "constraints": [{"type": "RANGE", "minimum": 1, "maximum": 525600}]
+        },
+        "smsApiUrl": {
+          "displayName": "SMS API URL",
+          "type": "text",
+          "nullable": false,
+          "constraints": [{"type": "LENGTH", "minLength": 1, "maxLength": 2048}]
+        },
+        "smsApiUsername": {
+          "displayName": "SMS API Username",
+          "type": "text",
+          "nullable": false,
+          "constraints": [{"type": "LENGTH", "minLength": 1, "maxLength": 500}]
+        },
+        "smsApiPassword": {
+          "displayName": "SMS API Password",
+          "type": "secret",
+          "nullable": false,
+          "format": "password"
+        },
+        "smsApiCookieId": {
+          "displayName": "SMS API JSESSIONID",
+          "type": "secret",
+          "nullable": false,
+          "format": "password"
+        },
+        "dryRun": {
+          "displayName": "Dry Run",
+          "type": "boolean",
+          "nullable": false,
+          "default": false
         }
       }
     }
   },
   "dynatrace": "1",
-  "description": "url_sms_plugin configuration",
+  "description": "URL SMS Plugin configuration",
   "schemaId": "python-extension.activation",
-  "displayName": "url_sms_plugin configuration",
-  "ownerProductManagement": "dynatrace",
-  "ownerDevelopment": "dynatrace",
+  "displayName": "URL SMS Plugin",
+  "ownerProductManagement": "Your Team",
+  "ownerDevelopment": "Your Team",
   "maturity": "GENERAL_AVAILABILITY",
-  "allowedScopes": [
-    "tenant"
-  ],
+  "allowedScopes": ["tenant"],
   "multiObject": false,
   "properties": {
     "pythonLocal": {
       "displayName": "Python Local Extension",
-      "type": {
-        "$ref": "#/types/pythonLocal"
-      }
-    },
-    "pythonRemote": {
-      "displayName": "Python Remote Extension",
-      "type": {
-        "$ref": "#/types/pythonRemote"
-      }
+      "type": {"$ref": "#/types/pythonLocal"}
     }
   }
 }

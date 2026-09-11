@@ -26,5 +26,5 @@ setup(
     python_requires=">=3.10",
     include_package_data=True,
     install_requires=["dt-extensions-sdk"],
-    extras_require={"dev": ["dt-extensions-sdk[cli]"]},
+    extras_require={"dev": ["dt-extensions-sdk[cli]", "ruff"]},
 )
