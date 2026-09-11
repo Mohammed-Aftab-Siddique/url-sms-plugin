@@ -194,6 +194,7 @@ activation.json
 
 # Cache
 problem_cache.json
+.url_sms_plugin_cache/
 
 # Metadata
 METADATA/
