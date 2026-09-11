@@ -1,55 +1,106 @@
-# url_sms_plugin extension
+# URL SMS Plugin
 
-## Building and signing
+The URL SMS Plugin is a local Dynatrace OneAgent extension that monitors a
+configured list of HTTP(S) URLs. It publishes the final availability result for
+every URL and uses time-based escalation to determine when an unavailable URL
+requires notification. A URL is healthy only when its final HTTP status is
+`200`.
 
-* `dt-sdk build .`
+## Architecture
 
-## Running
+```text
+Configured URLs
+    -> URL availability client
+    -> HTTP status metric (Host IP, URL)
+    -> alert-state engine and durable cache
+    -> SMS formatter and gateway client
+    -> configured recipients
+```
 
-1. Create and activate the Python 3.14 development environment:
-   `python3.14 -m venv .venv314 && source .venv314/bin/activate`.
-2. Install the project and development dependencies: `python -m pip install -e ".[dev]"`.
-3. In the ignored `secrets.json`, define `smsApiPassword` and
-   `smsApiCookieId` for the matching placeholders in `activation.json`. Do
-   not commit real values.
-4. Adjust the non-secret example values in `activation.json` as needed, then run `dt-sdk run`.
+The extension runs where OneAgent runs. It is not a remote ActiveGate
+extension.
 
-Run the Stage 3 unit tests with `python -m unittest discover -s tests -v`.
-The extension manifest intentionally retains Python 3.10 as its minimum
-supported runtime.
+## Prerequisites
 
-The Stage 4 implementation validates local activation configuration, checks
-every configured URL, and publishes `custom.url.availability.status` for each
-final result. Its dimensions are `Host` (the OneAgent host) and `URL`; its value
-is the HTTP status or a normalized negative transport status. It retries
-non-200 and transport failures up to five times within a 30-second window.
-The Stage 5 implementation also stores activation-isolated failure state using
-atomic cache writes. It produces one L1 failure decision, then only new L2/L3
-escalation decisions as thresholds are crossed, followed by one recovery
-decision. A decision is marked delivered only after the SMS transport confirms
-it; until then, it remains pending. SMS delivery is added in the next stage.
+- Dynatrace OneAgent with support for Python extensions.
+- Python 3.10 or later in the extension runtime.
+- Network access from the OneAgent host to monitored URLs and the SMS gateway.
+- An SMS gateway URL, username, password, and JSESSIONID value.
 
-## Developing
+## Configuration
 
-1. Clone this repository
-2. Install dependencies with `pip install .`
-3. Increase the version under `extension/extension.yaml` after modifications
-4. Run `dt-sdk build`
+Configure the extension through local activation configuration. Keep the
+password and JSESSIONID in Dynatrace secret fields; do not commit real values.
 
-## Structure
+| Setting | Description |
+| --- | --- |
+| URLs to Monitor | One or more unique plain HTTP(S) URLs. |
+| L1, L2, L3 Recipients | Recipient numbers for initial and escalating alerts. |
+| L2/L3 Criticality Delay | Continuous-failure minutes before L2/L3 applies. L3 must exceed L2. |
+| Polling Interval | Intended URL-check interval in seconds. |
+| Maximum Redirects | Maximum redirects followed during one URL check. |
+| Cache Retention | Minutes to retain recovered or removed-URL alert state. |
+| SMS API URL / Username | SMS gateway endpoint and user name. |
+| SMS API Password / JSESSIONID | Gateway secrets. |
+| Dry Run | Logs notification delivery rather than sending it. |
 
-### url_sms_plugin folder
+## URL checks and metric
 
-Contains the python code for the extension
+Each URL is checked up to five times within a 30-second retry window. The final
+result is reported as the gauge metric:
 
-### extension folder
+```text
+custom.url.availability.status
+```
 
-Contains the yaml and activation definitions for the framework v2 extension
+Dimensions are `Host` (the active IPv4 address of the OneAgent host) and `URL`
+(the configured URL). The metric value is the final HTTP status or a normalized
+transport status:
 
-### setup.py
+| Value | Meaning |
+| --- | --- |
+| `-1` | TLS/certificate failure |
+| `-2` | Timeout |
+| `-3` | Connection failure |
+| `-4` | Redirect limit or loop |
+| `-5` | Other request failure |
 
-Contains dependency and other python metadata
+## Alert lifecycle
 
-### activation.json
+A continuous non-`200` result creates an L1 alert action, then L2 and L3
+actions only when their configured delays are reached. Alerts are not repeated
+at the same level. A later `200` result creates one issue-resolution action for
+every escalation level reached.
 
-Used during simulation only, contains the activation definition for the extension
+State is isolated per activation, written atomically, and retained according to
+the configured retention period. Failure, escalation, and recovery timestamps
+use Indian Standard Time (`Asia/Kolkata`, IST); escalation delays use elapsed
+time.
+
+## SMS gateway contract
+
+The SMS transport will submit a form-encoded `POST` request with:
+
+- `Content-Type: application/x-www-form-urlencoded`
+- `Cookie: JSESSIONID=<configured cookie ID>`
+- `auth`: JSON containing configured username/password and `appName: Ecamptest`
+- `jsonString`: JSON containing campaign `AppDynamics` and the recipient number
+
+The message payload is:
+
+```text
+Incident: <failure, escalation, or resolution>
+URL: <configured URL>
+Status: <HTTP or normalized status>
+Time: <IST timestamp>
+DT
+```
+
+The URL checks, metric, durable alert state, and alert decisions are available.
+SMS transport is the remaining capability to connect to the gateway.
+
+## Security
+
+- Treat password and JSESSIONID values as secrets.
+- Never log gateway credentials, cookies, or authorization payloads.
+- Use dummy credentials only with the local mock gateway.
