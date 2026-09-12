@@ -28,6 +28,8 @@ class UrlAlertState:
     highest_notified_level: EscalationLevel | None
     recovered_at: datetime | None = None
     recovery_notified: bool = False
+    pending_action_key: str | None = None
+    delivery_attempts: int = 0
 
 
 @dataclass(frozen=True, slots=True)

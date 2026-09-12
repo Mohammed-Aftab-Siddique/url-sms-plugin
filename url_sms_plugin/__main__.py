@@ -3,14 +3,22 @@ from pathlib import Path
 from dynatrace_extension import Extension, Status, StatusValue
 
 from url_sms_plugin.cache.cache_manager import CacheManager
+from url_sms_plugin.clients.sms_client import SmsClient
 from url_sms_plugin.clients.url_client import UrlAvailabilityClient
 from url_sms_plugin.config.settings import load_settings
 from url_sms_plugin.config.validator import ConfigurationError, validate_settings
 from url_sms_plugin.metrics.publisher import MetricsPublisher
 from url_sms_plugin.processing.alert_engine import AlertEngine
+from url_sms_plugin.processing.notification_service import NotificationService
 
 
 class ExtensionImpl(Extension):
+    def schedule(self, callback, interval, args=None, activation_type=None, offset_seconds=None):
+        """Use activation-configured cadence for the SDK's default query callback."""
+        if getattr(self, "settings", None) and callback == self.query:
+            interval = self.settings.polling_interval
+        return super().schedule(callback, interval, args, activation_type, offset_seconds)
+
     def initialize(self) -> None:
         """Load and validate the local activation configuration."""
         try:
@@ -24,6 +32,10 @@ class ExtensionImpl(Extension):
                 self.cache,
                 self.settings.escalation,
                 self.settings.cache_retention_minutes,
+            )
+            self.notifications = NotificationService(
+                SmsClient(self.settings.sms_api, self.settings.dry_run),
+                self.settings.escalation,
             )
         except ConfigurationError:
             self.logger.exception("URL SMS Plugin configuration is invalid.")
@@ -48,6 +60,13 @@ class ExtensionImpl(Extension):
                     f"Alert decision: kind={action.kind.value}, url={action.url}, "
                     f"status={action.status_code}, levels={levels}."
                 )
+                if self.settings.dry_run:
+                    self.logger.info("Dry run: SMS action retained as pending.")
+                elif self.alert_engine.begin_delivery(action) and self.notifications.dispatch(action):
+                    self.alert_engine.mark_delivered(action)
+                    self.logger.info(f"SMS action delivered: kind={action.kind.value}, url={action.url}.")
+                else:
+                    self.logger.warning("SMS action failed after three attempts; action remains pending.")
             error = result.error.label if result.error else "none"
             self.logger.info(
                 f"URL check completed: url={result.url}, status={result.status_code}, "

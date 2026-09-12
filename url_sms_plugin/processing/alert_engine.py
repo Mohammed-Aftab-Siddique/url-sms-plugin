@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -68,6 +69,20 @@ class AlertEngine:
             )
         )
 
+    def begin_delivery(self, action: AlertAction) -> bool:
+        """Persist and enforce the three total attempts for one action."""
+        state = self._cache.get(action.url)
+        if state is None:
+            return False
+        key = f"{action.kind.value}:{','.join(level.value for level in action.levels)}"
+        if state.pending_action_key != key:
+            state = replace(state, pending_action_key=key, delivery_attempts=0)
+        if state.delivery_attempts >= 3:
+            self._cache.put(state)
+            return False
+        self._cache.put(replace(state, delivery_attempts=state.delivery_attempts + 1))
+        return True
+
     def _handle_failure(
         self,
         result: UrlCheckResult,
@@ -97,7 +112,8 @@ class AlertEngine:
         self._cache.put(updated)
         if state.highest_notified_level is not None and level <= state.highest_notified_level:
             return None
-        return AlertAction(result.url, result.status_code, AlertKind.ESCALATION, (level,))
+        kind = AlertKind.FAILURE if state.highest_notified_level is None else AlertKind.ESCALATION
+        return AlertAction(result.url, result.status_code, kind, (level,))
 
     def _handle_available(
         self,

@@ -37,7 +37,7 @@ password and JSESSIONID in Dynatrace secret fields; do not commit real values.
 | URLs to Monitor | One or more unique plain HTTP(S) URLs. |
 | L1, L2, L3 Recipients | Recipient numbers for initial and escalating alerts. |
 | L2/L3 Criticality Delay | Continuous-failure minutes before L2/L3 applies. L3 must exceed L2. |
-| Polling Interval | Intended URL-check interval in seconds. |
+| Polling Interval | URL-check interval in seconds; minimum 35 seconds. |
 | Maximum Redirects | Maximum redirects followed during one URL check. |
 | Cache Retention | Minutes to retain recovered or removed-URL alert state. |
 | SMS API URL / Username | SMS gateway endpoint and user name. |
@@ -89,7 +89,7 @@ The SMS transport will submit a form-encoded `POST` request with:
 The message payload is:
 
 ```text
-Incident: <failure, escalation, or resolution>
+Incident: <status message> [<alert level>]
 URL: <configured URL>
 Status: <HTTP or normalized status>
 Time: <IST timestamp>

@@ -85,6 +85,8 @@ class CacheManager:
             ),
             "recovered_at": state.recovered_at.isoformat() if state.recovered_at else None,
             "recovery_notified": state.recovery_notified,
+            "pending_action_key": state.pending_action_key,
+            "delivery_attempts": state.delivery_attempts,
         }
 
     @staticmethod
@@ -102,4 +104,6 @@ class CacheManager:
             ),
             recovered_at=datetime.fromisoformat(recovered_at) if recovered_at else None,
             recovery_notified=bool(item.get("recovery_notified", False)),
+            pending_action_key=item.get("pending_action_key"),
+            delivery_attempts=int(item.get("delivery_attempts", 0)),
         )
