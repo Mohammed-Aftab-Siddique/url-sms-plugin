@@ -29,4 +29,4 @@ class UrlCheckResult:
 
     @property
     def is_available(self) -> bool:
-        return self.status_code == 200
+        return 200 <= self.status_code < 300

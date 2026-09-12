@@ -29,7 +29,8 @@ class UrlAlertState:
     recovered_at: datetime | None = None
     recovery_notified: bool = False
     pending_action_key: str | None = None
-    delivery_attempts: int = 0
+    delivery_attempts: dict[str, int] | None = None
+    delivered_recipients: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

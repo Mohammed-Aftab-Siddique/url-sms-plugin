@@ -36,6 +36,16 @@ class UrlAvailabilityClientTests(unittest.TestCase):
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.attempts, 1)
         self.assertEqual(len(session.calls), 1)
+
+    def test_returns_any_2xx_without_retry(self) -> None:
+        session = FakeSession([FakeResponse(204)])
+        client = UrlAvailabilityClient(session=session)
+
+        result = client.check("https://example.com", max_redirects=3)
+
+        self.assertTrue(result.is_available)
+        self.assertEqual(result.status_code, 204)
+        self.assertEqual(len(session.calls), 1)
         self.assertEqual(session.calls[0][1], True)
         self.assertEqual(session.max_redirects, 30)
 

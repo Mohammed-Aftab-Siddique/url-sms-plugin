@@ -11,10 +11,13 @@ class NotificationService:
         self._client = client
         self._escalation = escalation
 
-    def dispatch(self, action: AlertAction) -> bool:
-        """Send an action to all selected recipients; success requires all sends."""
+    def recipients(self, action: AlertAction) -> list[str]:
+        return self._recipients(action)
+
+    def dispatch(self, action: AlertAction, recipients: list[str]) -> set[str]:
+        """Send once to each recipient and return only confirmed deliveries."""
         payload = format_sms(action)
-        return all(self._client.send(payload, recipient) for recipient in self._recipients(action))
+        return {recipient for recipient in recipients if self._client.send(payload, recipient)}
 
     def _recipients(self, action: AlertAction) -> list[str]:
         recipients: list[str] = []

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -75,7 +76,7 @@ class CacheManager:
         return is_configured or state.last_seen_at.timestamp() >= cutoff
 
     @staticmethod
-    def _serialize(state: UrlAlertState) -> dict[str, str | bool | None]:
+    def _serialize(state: UrlAlertState) -> dict[str, object]:
         return {
             "is_failing": state.is_failing,
             "first_failed_at": state.first_failed_at.isoformat() if state.first_failed_at else None,
@@ -86,14 +87,27 @@ class CacheManager:
             "recovered_at": state.recovered_at.isoformat() if state.recovered_at else None,
             "recovery_notified": state.recovery_notified,
             "pending_action_key": state.pending_action_key,
-            "delivery_attempts": state.delivery_attempts,
+            "delivery_attempts": state.delivery_attempts or {},
+            "delivered_recipients": list(state.delivered_recipients),
         }
 
     @staticmethod
-    def _deserialize(url: str, item: dict[str, str | bool | None]) -> UrlAlertState:
+    def _deserialize(url: str, item: Mapping[str, object]) -> UrlAlertState:
         first_failed_at = item["first_failed_at"]
         recovered_at = item["recovered_at"]
         highest_notified_level = item["highest_notified_level"]
+        raw_attempts = item.get("delivery_attempts", {})
+        attempts = (
+            {str(recipient): int(count) for recipient, count in raw_attempts.items()}
+            if isinstance(raw_attempts, Mapping)
+            else {}
+        )
+        raw_recipients = item.get("delivered_recipients", [])
+        recipients = (
+            tuple(str(recipient) for recipient in raw_recipients)
+            if isinstance(raw_recipients, list)
+            else ()
+        )
         return UrlAlertState(
             url=url,
             is_failing=bool(item["is_failing"]),
@@ -105,5 +119,6 @@ class CacheManager:
             recovered_at=datetime.fromisoformat(recovered_at) if recovered_at else None,
             recovery_notified=bool(item.get("recovery_notified", False)),
             pending_action_key=item.get("pending_action_key"),
-            delivery_attempts=int(item.get("delivery_attempts", 0)),
+            delivery_attempts=attempts,
+            delivered_recipients=recipients,
         )

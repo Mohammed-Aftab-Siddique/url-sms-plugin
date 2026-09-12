@@ -8,10 +8,9 @@ from url_sms_plugin.models.settings import SmsApiSettings
 
 
 class SmsClient:
-    def __init__(self, settings: SmsApiSettings, dry_run: bool, timeout: int = 10) -> None:
+    def __init__(self, settings: SmsApiSettings, dry_run: bool) -> None:
         self._settings = settings
         self._dry_run = dry_run
-        self._timeout = timeout
 
     def send(self, payload: str, recipient: str) -> bool:
         if self._dry_run:
@@ -40,7 +39,7 @@ class SmsClient:
                     {"campaign": "AppDynamics", "dynParam": [payload, "", "", recipient]}
                 ),
             },
-            timeout=self._timeout,
+            timeout=(5, 5),
         )
         response.raise_for_status()
         return True

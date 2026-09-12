@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from dynatrace_extension import Extension, Status, StatusValue
@@ -26,7 +27,8 @@ class ExtensionImpl(Extension):
             validate_settings(self.settings)
             self.url_client = UrlAvailabilityClient()
             self.metrics = MetricsPublisher(self)
-            self.cache = CacheManager(Path(".url_sms_plugin_cache"), self.monitoring_config_id)
+            state_root = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state"))
+            self.cache = CacheManager(state_root / "url_sms_plugin", self.monitoring_config_id)
             self.cache.load()
             self.alert_engine = AlertEngine(
                 self.cache,
@@ -62,11 +64,21 @@ class ExtensionImpl(Extension):
                 )
                 if self.settings.dry_run:
                     self.logger.info("Dry run: SMS action retained as pending.")
-                elif self.alert_engine.begin_delivery(action) and self.notifications.dispatch(action):
-                    self.alert_engine.mark_delivered(action)
-                    self.logger.info(f"SMS action delivered: kind={action.kind.value}, url={action.url}.")
                 else:
-                    self.logger.warning("SMS action failed after three attempts; action remains pending.")
+                    recipients = self.notifications.recipients(action)
+                    pending = self.alert_engine.begin_delivery(action, recipients)
+                    self.cache.save()
+                    delivered = self.notifications.dispatch(action, pending)
+                    action_complete = self.alert_engine.record_delivery_results(action, recipients, delivered)
+                    self.cache.save()
+                    if action_complete:
+                        self.alert_engine.mark_delivered(action)
+                        self.cache.save()
+                        self.logger.info(f"SMS action delivered: kind={action.kind.value}, url={action.url}.")
+                    elif not pending:
+                        self.logger.warning("SMS action exhausted its three delivery attempts.")
+                    else:
+                        self.logger.warning("SMS action remains pending after a delivery failure.")
             error = result.error.label if result.error else "none"
             self.logger.info(
                 f"URL check completed: url={result.url}, status={result.status_code}, "

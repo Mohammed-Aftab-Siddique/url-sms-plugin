@@ -40,6 +40,13 @@ class SettingsTests(unittest.TestCase):
         with self.assertRaisesRegex(ConfigurationError, "L3 criticality delay"):
             validate_settings(load_settings(config))
 
+    def test_rejects_polling_interval_below_sixty_seconds(self) -> None:
+        config = valid_config()
+        config["pollingInterval"] = 59
+
+        with self.assertRaisesRegex(ConfigurationError, "at least 60 seconds"):
+            validate_settings(load_settings(config))
+
     def test_rejects_duplicate_urls(self) -> None:
         config = valid_config()
         config["urls"].append({"url": "https://example.com"})

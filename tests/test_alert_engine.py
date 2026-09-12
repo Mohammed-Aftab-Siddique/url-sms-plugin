@@ -93,3 +93,20 @@ class AlertEngineTests(unittest.TestCase):
         reloaded_engine.prune({"https://example.com"})
 
         self.assertIsNone(reloaded.get("https://example.com"))
+
+    def test_delivery_retries_only_recipients_without_a_confirmed_delivery(self) -> None:
+        action = self.engine.process(self.failure)
+        recipients = ["111", "222"]
+
+        self.assertEqual(self.engine.begin_delivery(action, recipients), recipients)
+        self.assertFalse(self.engine.record_delivery_results(action, recipients, {"111"}))
+        self.cache.save()
+
+        reloaded = CacheManager(Path(self.temporary_directory.name), "test-activation")
+        reloaded.load()
+        reloaded_engine = AlertEngine(reloaded, escalation_settings(), 60, now=self.clock.now)
+        self.assertEqual(reloaded_engine.begin_delivery(action, recipients), ["222"])
+        self.assertFalse(reloaded_engine.record_delivery_results(action, recipients, set()))
+        self.assertEqual(reloaded_engine.begin_delivery(action, recipients), ["222"])
+        self.assertFalse(reloaded_engine.record_delivery_results(action, recipients, set()))
+        self.assertEqual(reloaded_engine.begin_delivery(action, recipients), [])

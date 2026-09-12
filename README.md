@@ -3,8 +3,8 @@
 The URL SMS Plugin is a local Dynatrace OneAgent extension that monitors a
 configured list of HTTP(S) URLs. It publishes the final availability result for
 every URL and uses time-based escalation to determine when an unavailable URL
-requires notification. A URL is healthy only when its final HTTP status is
-`200`.
+requires notification. A URL is healthy when its final HTTP status is in the
+`2xx` range.
 
 ## Architecture
 
@@ -37,7 +37,7 @@ password and JSESSIONID in Dynatrace secret fields; do not commit real values.
 | URLs to Monitor | One or more unique plain HTTP(S) URLs. |
 | L1, L2, L3 Recipients | Recipient numbers for initial and escalating alerts. |
 | L2/L3 Criticality Delay | Continuous-failure minutes before L2/L3 applies. L3 must exceed L2. |
-| Polling Interval | URL-check interval in seconds; minimum 35 seconds. |
+| Polling Interval | URL-check interval in seconds; minimum 60 seconds. |
 | Maximum Redirects | Maximum redirects followed during one URL check. |
 | Cache Retention | Minutes to retain recovered or removed-URL alert state. |
 | SMS API URL / Username | SMS gateway endpoint and user name. |
@@ -54,8 +54,9 @@ custom.url.availability.status
 ```
 
 Dimensions are `Host` (the active IPv4 address of the OneAgent host) and `URL`
-(the configured URL). The metric value is the final HTTP status or a normalized
-transport status:
+(the configured URL). If no usable host address can be resolved, `Host` is
+`127.0.0.1`. The metric value is the final HTTP status or a normalized transport
+status:
 
 | Value | Meaning |
 | --- | --- |
@@ -67,9 +68,9 @@ transport status:
 
 ## Alert lifecycle
 
-A continuous non-`200` result creates an L1 alert action, then L2 and L3
+A continuous non-`2xx` result creates an L1 alert action, then L2 and L3
 actions only when their configured delays are reached. Alerts are not repeated
-at the same level. A later `200` result creates one issue-resolution action for
+at the same level. A later `2xx` result creates one issue-resolution action for
 every escalation level reached.
 
 State is isolated per activation, written atomically, and retained according to
@@ -96,8 +97,9 @@ Time: <IST timestamp>
 DT
 ```
 
-The URL checks, metric, durable alert state, and alert decisions are available.
-SMS transport is the remaining capability to connect to the gateway.
+Each recipient has up to three total submission attempts for an action. Attempt
+reservations and confirmed deliveries are persisted per activation, so a restart
+does not resend to recipients already confirmed by the gateway.
 
 ## Security
 

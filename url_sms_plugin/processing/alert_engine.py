@@ -69,19 +69,40 @@ class AlertEngine:
             )
         )
 
-    def begin_delivery(self, action: AlertAction) -> bool:
-        """Persist and enforce the three total attempts for one action."""
+    def begin_delivery(self, action: AlertAction, recipients: list[str]) -> list[str]:
+        """Reserve one of three durable attempts for each eligible recipient."""
+        state = self._cache.get(action.url)
+        if state is None:
+            return []
+        key = f"{action.kind.value}:{','.join(level.value for level in action.levels)}"
+        if state.pending_action_key != key:
+            state = replace(state, pending_action_key=key, delivery_attempts={}, delivered_recipients=())
+        attempts = state.delivery_attempts or {}
+        delivered = set(state.delivered_recipients)
+        eligible = [
+            recipient
+            for recipient in recipients
+            if recipient not in delivered and attempts.get(recipient, 0) < 3
+        ]
+        updated_attempts = {
+            **attempts,
+            **{recipient: attempts.get(recipient, 0) + 1 for recipient in eligible},
+        }
+        self._cache.put(replace(state, delivery_attempts=updated_attempts))
+        return eligible
+
+    def record_delivery_results(
+        self,
+        action: AlertAction,
+        recipients: list[str],
+        delivered: set[str],
+    ) -> bool:
         state = self._cache.get(action.url)
         if state is None:
             return False
-        key = f"{action.kind.value}:{','.join(level.value for level in action.levels)}"
-        if state.pending_action_key != key:
-            state = replace(state, pending_action_key=key, delivery_attempts=0)
-        if state.delivery_attempts >= 3:
-            self._cache.put(state)
-            return False
-        self._cache.put(replace(state, delivery_attempts=state.delivery_attempts + 1))
-        return True
+        completed = tuple(sorted(set(state.delivered_recipients) | delivered))
+        self._cache.put(replace(state, delivered_recipients=completed))
+        return set(recipients).issubset(completed)
 
     def _handle_failure(
         self,
@@ -102,13 +123,7 @@ class AlertEngine:
             return AlertAction(result.url, result.status_code, AlertKind.FAILURE, (EscalationLevel.L1,))
 
         level = current_level(state.first_failed_at, now, self._settings)
-        updated = UrlAlertState(
-            url=state.url,
-            is_failing=True,
-            first_failed_at=state.first_failed_at,
-            last_seen_at=now,
-            highest_notified_level=state.highest_notified_level,
-        )
+        updated = replace(state, last_seen_at=now)
         self._cache.put(updated)
         if state.highest_notified_level is not None and level <= state.highest_notified_level:
             return None
@@ -135,25 +150,16 @@ class AlertEngine:
 
         if state.highest_notified_level is None:
             self._cache.put(
-                UrlAlertState(
-                    url=state.url,
+                replace(
+                    state,
                     is_failing=False,
-                    first_failed_at=state.first_failed_at,
                     last_seen_at=now,
-                    highest_notified_level=None,
                     recovered_at=now,
                 )
             )
             return None
 
-        recovered = UrlAlertState(
-            url=state.url,
-            is_failing=False,
-            first_failed_at=state.first_failed_at,
-            last_seen_at=now,
-            highest_notified_level=state.highest_notified_level,
-            recovered_at=now,
-        )
+        recovered = replace(state, is_failing=False, last_seen_at=now, recovered_at=now)
         self._cache.put(recovered)
         return AlertAction(
             result.url,

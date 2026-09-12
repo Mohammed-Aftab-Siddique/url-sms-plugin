@@ -49,7 +49,7 @@ class UrlAvailabilityClient:
                     )
 
                 result = self._request(url, attempts, remaining)
-                if result.status_code == 200 or attempts == self.max_attempts:
+                if result.is_available or attempts == self.max_attempts:
                     return result
 
                 remaining = deadline - self._clock()

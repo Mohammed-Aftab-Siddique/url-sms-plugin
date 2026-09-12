@@ -41,8 +41,8 @@ def _validate_timing(settings: ExtensionSettings) -> None:
     if settings.escalation.l3_after_minutes <= settings.escalation.l2_after_minutes:
         raise ConfigurationError("L3 criticality delay must be greater than the L2 criticality delay.")
 
-    if settings.polling_interval < 35:
-        raise ConfigurationError("Polling interval must be at least 35 seconds.")
+    if settings.polling_interval < 60:
+        raise ConfigurationError("Polling interval must be at least 60 seconds.")
 
     if settings.max_redirects < 0:
         raise ConfigurationError("Maximum redirects cannot be negative.")

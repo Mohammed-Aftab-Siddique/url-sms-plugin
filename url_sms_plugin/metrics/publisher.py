@@ -38,7 +38,16 @@ class MetricsPublisher:
         try:
             with socket(AF_INET, SOCK_DGRAM) as probe:
                 probe.connect(("192.0.2.1", 80))
-                return probe.getsockname()[0]
+                address = probe.getsockname()[0]
+                if not address.startswith("127."):
+                    return address
         except OSError:
+            pass
+        try:
             addresses = gethostbyname_ex(gethostname())[2]
-            return next((address for address in addresses if not address.startswith("127.")), addresses[0])
+            return next(
+                (address for address in addresses if not address.startswith("127.")),
+                "127.0.0.1",
+            )
+        except OSError:
+            return "127.0.0.1"

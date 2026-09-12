@@ -24,6 +24,28 @@ class MetricsPublisherTests(unittest.TestCase):
         self.assertEqual(publisher._host_ip, "192.0.2.10")
         probe.connect.assert_called_once_with(("192.0.2.1", 80))
 
+    @patch("url_sms_plugin.metrics.publisher.gethostbyname_ex", side_effect=OSError)
+    @patch("url_sms_plugin.metrics.publisher.socket", side_effect=OSError)
+    def test_uses_loopback_when_both_host_ip_lookups_fail(self, _socket_factory, _hostname_lookup) -> None:
+        publisher = MetricsPublisher(FakeExtension())
+
+        self.assertEqual(publisher._host_ip, "127.0.0.1")
+
+    @patch("url_sms_plugin.metrics.publisher.gethostbyname_ex")
+    @patch("url_sms_plugin.metrics.publisher.socket")
+    def test_replaces_loopback_route_address_with_hostname_address(
+        self,
+        socket_factory,
+        hostname_lookup,
+    ) -> None:
+        probe = socket_factory.return_value.__enter__.return_value
+        probe.getsockname.return_value = ("127.0.0.1", 12345)
+        hostname_lookup.return_value = ("host", [], ["192.0.2.20"])
+
+        publisher = MetricsPublisher(FakeExtension())
+
+        self.assertEqual(publisher._host_ip, "192.0.2.20")
+
     def test_publishes_http_status_with_host_and_url_dimensions(self) -> None:
         extension = FakeExtension()
         publisher = MetricsPublisher(extension, host_ip="192.0.2.10")
