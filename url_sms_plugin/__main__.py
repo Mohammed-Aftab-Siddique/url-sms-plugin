@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 from dynatrace_extension import Extension, Status, StatusValue
@@ -27,8 +26,7 @@ class ExtensionImpl(Extension):
             validate_settings(self.settings)
             self.url_client = UrlAvailabilityClient()
             self.metrics = MetricsPublisher(self)
-            state_root = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state"))
-            self.cache = CacheManager(state_root / "url_sms_plugin", self.monitoring_config_id)
+            self.cache = CacheManager(Path(), self.monitoring_config_id)
             self.cache.load()
             self.alert_engine = AlertEngine(
                 self.cache,

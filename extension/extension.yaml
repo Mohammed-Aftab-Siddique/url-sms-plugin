@@ -1,5 +1,5 @@
 name: custom:url-sms-plugin
-version: 0.0.1
+version: 0.0.2
 minDynatraceVersion: "1.285"
 author:
   name: "Mohammed Aftab Siddique"

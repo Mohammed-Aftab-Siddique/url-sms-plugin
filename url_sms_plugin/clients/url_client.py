@@ -30,8 +30,8 @@ class UrlAvailabilityClient:
         """Return the final HTTP result or a normalized transport failure.
 
         A check always has at most five attempts and never intentionally waits
-        beyond the 30-second retry window. A response other than HTTP 200 is
-        retried because it is eligible for an eventual availability alert.
+        beyond the 30-second retry window. A response outside the HTTP 2xx range
+        is retried because it is eligible for an eventual availability alert.
         """
         deadline = self._clock() + self.retry_window_seconds
         original_max_redirects = getattr(self._session, "max_redirects", None)

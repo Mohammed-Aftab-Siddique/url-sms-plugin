@@ -31,8 +31,15 @@ class CacheManager:
             return
         try:
             payload = json.loads(self._cache_file.read_text(encoding="utf-8"))
+            if not isinstance(payload, Mapping):
+                raise ValueError("Cache root must be an object.")
+            if any(
+                not isinstance(url, str) or not isinstance(item, Mapping)
+                for url, item in payload.items()
+            ):
+                raise ValueError("Cache entries must be URL-keyed objects.")
             self._states = {url: self._deserialize(url, item) for url, item in payload.items()}
-        except (OSError, TypeError, ValueError, KeyError) as exc:
+        except (AttributeError, OSError, TypeError, ValueError, KeyError) as exc:
             raise CacheError(f"Unable to load URL alert cache: {exc}") from exc
 
     def save(self) -> None:

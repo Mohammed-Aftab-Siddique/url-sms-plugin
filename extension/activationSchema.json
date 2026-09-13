@@ -8,6 +8,7 @@
           "displayName": "URL",
           "type": "text",
           "nullable": false,
+          "default": "",
           "constraints": [
             {
               "type": "LENGTH",
@@ -26,6 +27,7 @@
           "displayName": "Phone Number",
           "type": "text",
           "nullable": false,
+          "default": "",
           "constraints": [
             {
               "type": "LENGTH",
@@ -135,24 +137,28 @@
           "displayName": "SMS API URL",
           "type": "text",
           "nullable": false,
+          "default": "",
           "constraints": [{"type": "LENGTH", "minLength": 1, "maxLength": 2048}]
         },
         "smsApiUsername": {
           "displayName": "SMS API Username",
           "type": "text",
           "nullable": false,
+          "default": "",
           "constraints": [{"type": "LENGTH", "minLength": 1, "maxLength": 500}]
         },
         "smsApiPassword": {
           "displayName": "SMS API Password",
           "type": "secret",
           "nullable": false,
+          "default": "",
           "format": "password"
         },
         "smsApiCookieId": {
           "displayName": "SMS API JSESSIONID",
           "type": "secret",
           "nullable": false,
+          "default": "",
           "format": "password"
         },
         "dryRun": {

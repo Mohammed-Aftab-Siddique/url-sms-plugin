@@ -29,7 +29,7 @@ class MetricsPublisher:
         self._extension.report_metric(
             URL_STATUS_METRIC,
             result.status_code,
-            dimensions={"Host": self._host_ip, "URL": result.url},
+            dimensions={"host": self._host_ip, "url": result.url},
         )
 
     @staticmethod

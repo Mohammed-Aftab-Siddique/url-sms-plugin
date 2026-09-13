@@ -11,7 +11,7 @@ requires notification. A URL is healthy when its final HTTP status is in the
 ```text
 Configured URLs
     -> URL availability client
-    -> HTTP status metric (Host IP, URL)
+    -> HTTP status metric (host IP, URL)
     -> alert-state engine and durable cache
     -> SMS formatter and gateway client
     -> configured recipients
@@ -53,8 +53,8 @@ result is reported as the gauge metric:
 custom.url.availability.status
 ```
 
-Dimensions are `Host` (the active IPv4 address of the OneAgent host) and `URL`
-(the configured URL). If no usable host address can be resolved, `Host` is
+Dimensions are `host` (the active IPv4 address of the OneAgent host) and `url`
+(the configured URL). If no usable host address can be resolved, `host` is
 `127.0.0.1`. The metric value is the final HTTP status or a normalized transport
 status:
 
@@ -73,10 +73,11 @@ actions only when their configured delays are reached. Alerts are not repeated
 at the same level. A later `2xx` result creates one issue-resolution action for
 every escalation level reached.
 
-State is isolated per activation, written atomically, and retained according to
-the configured retention period. Failure, escalation, and recovery timestamps
-use Indian Standard Time (`Asia/Kolkata`, IST); escalation delays use elapsed
-time.
+State is written atomically in the Dynatrace configuration-specific extension
+working directory. The activation ID is also hashed into the cache filename for
+isolation, and state is retained according to the configured retention period.
+Failure, escalation, and recovery timestamps use Indian Standard Time
+(`Asia/Kolkata`, IST); escalation delays use elapsed time.
 
 ## SMS gateway contract
 
@@ -100,6 +101,10 @@ DT
 Each recipient has up to three total submission attempts for an action. Attempt
 reservations and confirmed deliveries are persisted per activation, so a restart
 does not resend to recipients already confirmed by the gateway.
+
+The gateway connection timeout is five seconds, with a ten-second total request
+timeout. A successful HTTP response is sufficient; the response body is not
+waited on.
 
 ## Security
 

@@ -3,11 +3,15 @@
 import json
 
 import requests
+from urllib3.util import Timeout
 
 from url_sms_plugin.models.settings import SmsApiSettings
 
 
 class SmsClient:
+    _connect_timeout_seconds = 5
+    _total_timeout_seconds = 10
+
     def __init__(self, settings: SmsApiSettings, dry_run: bool) -> None:
         self._settings = settings
         self._dry_run = dry_run
@@ -39,7 +43,15 @@ class SmsClient:
                     {"campaign": "AppDynamics", "dynParam": [payload, "", "", recipient]}
                 ),
             },
-            timeout=(5, 5),
+            timeout=Timeout(
+                connect=self._connect_timeout_seconds,
+                read=self._connect_timeout_seconds,
+                total=self._total_timeout_seconds,
+            ),
+            stream=True,
         )
-        response.raise_for_status()
-        return True
+        try:
+            response.raise_for_status()
+            return True
+        finally:
+            response.close()

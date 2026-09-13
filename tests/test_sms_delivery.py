@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 from zoneinfo import ZoneInfo
 
 import requests
+from urllib3.util import Timeout
 
 from url_sms_plugin.clients.sms_client import SmsClient
 from url_sms_plugin.models.alerting import AlertAction, AlertKind, EscalationLevel
@@ -44,7 +45,10 @@ class SmsClientTests(unittest.TestCase):
         self.assertTrue(delivered)
         _, kwargs = post.call_args
         self.assertEqual(kwargs["headers"]["Cookie"], "JSESSIONID=test-cookie")
-        self.assertEqual(kwargs["timeout"], (5, 5))
+        self.assertIsInstance(kwargs["timeout"], Timeout)
+        self.assertEqual(kwargs["timeout"].connect_timeout, 5)
+        self.assertEqual(kwargs["timeout"].total, 10)
+        self.assertTrue(kwargs["stream"])
         self.assertEqual(
             json.loads(kwargs["data"]["auth"]),
             {"user": "test-user", "password": "test-password", "appName": "Ecamptest"},

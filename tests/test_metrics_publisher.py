@@ -60,7 +60,7 @@ class MetricsPublisherTests(unittest.TestCase):
                 (
                     URL_STATUS_METRIC,
                     503,
-                    {"Host": "192.0.2.10", "URL": "https://example.com"},
+                    {"host": "192.0.2.10", "url": "https://example.com"},
                 )
             ],
         )

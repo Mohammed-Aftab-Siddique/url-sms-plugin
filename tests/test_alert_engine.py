@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from zoneinfo import ZoneInfo
 
-from url_sms_plugin.cache.cache_manager import CacheManager
+from url_sms_plugin.cache.cache_manager import CacheError, CacheManager
 from url_sms_plugin.models.alerting import AlertKind, EscalationLevel
 from url_sms_plugin.models.settings import EscalationLevelSettings, EscalationSettings
 from url_sms_plugin.models.url_check import UrlCheckResult
@@ -110,3 +110,10 @@ class AlertEngineTests(unittest.TestCase):
         self.assertEqual(reloaded_engine.begin_delivery(action, recipients), ["222"])
         self.assertFalse(reloaded_engine.record_delivery_results(action, recipients, set()))
         self.assertEqual(reloaded_engine.begin_delivery(action, recipients), [])
+
+    def test_rejects_a_malformed_cache_root_with_a_clear_error(self) -> None:
+        self.cache._cache_file.parent.mkdir(parents=True, exist_ok=True)
+        self.cache._cache_file.write_text("[]", encoding="utf-8")
+
+        with self.assertRaisesRegex(CacheError, "Cache root must be an object"):
+            self.cache.load()
