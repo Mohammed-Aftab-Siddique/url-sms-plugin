@@ -20,21 +20,105 @@ Configured URLs
 The extension runs where OneAgent runs. It is not a remote ActiveGate
 extension.
 
+## Low-level design
+
+```mermaid
+flowchart TD
+    A[OneAgent scheduler<br/>poll interval >= 60 seconds] --> B[Load activation-specific<br/>alert-state cache]
+    B --> C{For each configured URL}
+    C --> D[HTTP availability client<br/>follow configured redirects<br/>max 5 attempts / 30-second window]
+    D --> E[Final HTTP status<br/>or normalized transport status]
+    E --> F[Publish custom.url.availability.status<br/>dimensions: host IPv4, url]
+    F --> G{Final status is 2xx?}
+
+    G -->|Yes| H[Alert engine evaluates recovery]
+    H --> I{Previously alerted?}
+    I -->|No| M[Continue with next URL]
+    I -->|Yes| J[Create one recovery action<br/>for each reached level]
+
+    G -->|No| K[Alert engine evaluates failure duration]
+    K --> L{L1, L2, or L3 action due?}
+    L -->|No| M
+    L -->|Yes| N[Select eligible recipients<br/>for the due alert level]
+    J --> N
+    N --> O[Persist recipient attempt reservation]
+    O --> P[Format approved SMS payload<br/>using IST timestamp]
+    P --> Q[POST form data to SMS gateway]
+    Q --> R{Gateway returned 2xx?}
+    R -->|Yes| S[Persist recipient delivery]
+    R -->|No| T[Retain pending action<br/>up to 3 total attempts per recipient]
+    S --> U[Atomically save alert-state cache]
+    T --> U
+    M --> U
+    U --> C
+```
+
+The cache file is written atomically in Dynatrace's configuration-specific
+working directory. Its filename includes a hash of the activation ID, so
+separate monitoring configurations remain isolated on the same OneAgent host.
+
 ## Prerequisites
 
 - Dynatrace OneAgent with support for Python extensions.
 - Python 3.10 or later in the extension runtime.
 - Network access from the OneAgent host to monitored URLs and the SMS gateway.
 - An SMS gateway URL, username, password, and JSESSIONID value.
+- A signed extension package and its trusted root certificate.
+
+## Certificate trust and deployment
+
+The extension ZIP must be signed, and its **root certificate** must be trusted
+by both the Dynatrace environment and every OneAgent host that will run this
+local extension.
+
+1. Add the root certificate to the Dynatrace Credential Vault as a **Public
+   certificate** with the **Extension validation** scope.
+2. On each Linux OneAgent host, place the root certificate as `root.pem` in:
+
+   ```text
+   /var/lib/dynatrace/oneagent/agent/config/certificates/
+   ```
+
+   The file must be readable by `dtuser`. Do not copy the private key to the
+   OneAgent host.
+3. Upload the signed extension ZIP to Dynatrace, then create a local monitoring
+   configuration for the intended OneAgent hosts or host group.
+
+On Windows, the equivalent certificate directory is:
+
+```text
+%PROGRAMDATA%\dynatrace\oneagent\agent\config\certificates\
+```
+
+If certificate permissions are corrected after a failed activation, restart the
+Extension Execution Controller before retrying. Dynatrace documents the root
+certificate paths and `dtuser` read-access requirement in its
+[extension-signing guide](https://docs.dynatrace.com/docs/ingest-from/extensions/develop-your-extensions/sign-extensions).
 
 ## Configuration
 
 Configure the extension through local activation configuration. Keep the
 password and JSESSIONID in Dynatrace secret fields; do not commit real values.
 
+### Activation steps
+
+1. In Dynatrace, open **Extensions**, select **URL SMS Plugin**, and add or edit
+   a local monitoring configuration.
+2. Select the OneAgent hosts or host group that should perform the URL checks.
+3. Add each target as a complete URL, including its scheme. For example,
+   `https://www.google.com`; `www.google.com` is not a valid HTTP client URL.
+4. Configure L1, L2, and L3 recipient lists and increasing L2/L3 delays.
+5. Set a polling interval of 60 seconds or more, redirect limit, and cache
+   retention period.
+6. Provide the SMS endpoint, username, password, and JSESSIONID. Keep **Dry
+   Run** enabled for the first verification; it creates alert decisions without
+   sending SMS.
+7. Verify the configuration's **Health** tab and OneAgent logs. Disable Dry Run
+   only after confirming the monitored URLs and SMS endpoint are reachable.
+
 | Setting | Description |
 | --- | --- |
-| URLs to Monitor | One or more unique plain HTTP(S) URLs. |
+| URLs to Monitor | One or more unique complete `http://` or `https://` URLs. |
 | L1, L2, L3 Recipients | Recipient numbers for initial and escalating alerts. |
 | L2/L3 Criticality Delay | Continuous-failure minutes before L2/L3 applies. L3 must exceed L2. |
 | Polling Interval | URL-check interval in seconds; minimum 60 seconds. |
@@ -111,3 +195,15 @@ waited on.
 - Treat password and JSESSIONID values as secrets.
 - Never log gateway credentials, cookies, or authorization payloads.
 - Use dummy credentials only with the local mock gateway.
+
+## Troubleshooting
+
+- A metric-ingestion error for a dimension key means the deployed package is
+  outdated. This version emits lowercase `host` and `url` dimension keys.
+- A `request` status of `-5` for a hostname such as `www.google.com` usually
+  means the configured URL is missing `http://` or `https://`.
+- The cache must be created in the Dynatrace working directory. Do not override
+  it with an unwritable home-directory path such as `/home/dtuser/.local`.
+- On a host where the mock SMS server and OneAgent run together, use
+  `http://localhost:3000/sms`. From a different host, use the mock VM's
+  reachable IP address or DNS name instead of `localhost`.
