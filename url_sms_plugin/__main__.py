@@ -36,6 +36,7 @@ class ExtensionImpl(Extension):
             self.notifications = NotificationService(
                 SmsClient(self.settings.sms_api, self.settings.dry_run),
                 self.settings.escalation,
+                self.settings.application_name,
             )
         except ConfigurationError:
             self.logger.exception("URL SMS Plugin configuration is invalid.")

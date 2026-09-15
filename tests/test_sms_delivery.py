@@ -76,15 +76,19 @@ class NotificationServiceTests(unittest.TestCase):
             l2_after_minutes=30,
             l3_after_minutes=60,
         )
-        service = NotificationService(client, escalation)
+        service = NotificationService(client, escalation, "Example Application")
 
         self.assertEqual(service.dispatch(action(), ["111", "222"]), {"111"})
 
 
 class SmsFormatterTests(unittest.TestCase):
-    def test_incident_uses_only_http_message_and_escalation_level(self) -> None:
-        message = format_sms(action(), datetime(2026, 9, 12, 18, 0, tzinfo=ZoneInfo("Asia/Kolkata")))
+    def test_incident_uses_application_name_monitoring_text_and_escalation_level(self) -> None:
+        message = format_sms(
+            "Example Application",
+            action(),
+            datetime(2026, 9, 12, 18, 0, tzinfo=ZoneInfo("Asia/Kolkata")),
+        )
 
-        self.assertIn("Incident: Not Found [L1]", message)
+        self.assertIn("Incident: Example Application URL Monitoring [L1]", message)
         self.assertIn("Status: 404", message)
-        self.assertNotIn("Incident: 404", message)
+        self.assertNotIn("Not Found", message)

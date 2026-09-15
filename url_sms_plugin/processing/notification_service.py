@@ -7,16 +7,22 @@ from url_sms_plugin.processing.sms_formatter import format_sms
 
 
 class NotificationService:
-    def __init__(self, client: SmsClient, escalation: EscalationSettings) -> None:
+    def __init__(
+        self,
+        client: SmsClient,
+        escalation: EscalationSettings,
+        application_name: str,
+    ) -> None:
         self._client = client
         self._escalation = escalation
+        self._application_name = application_name
 
     def recipients(self, action: AlertAction) -> list[str]:
         return self._recipients(action)
 
     def dispatch(self, action: AlertAction, recipients: list[str]) -> set[str]:
         """Send once to each recipient and return only confirmed deliveries."""
-        payload = format_sms(action)
+        payload = format_sms(self._application_name, action)
         return {recipient for recipient in recipients if self._client.send(payload, recipient)}
 
     def _recipients(self, action: AlertAction) -> list[str]:

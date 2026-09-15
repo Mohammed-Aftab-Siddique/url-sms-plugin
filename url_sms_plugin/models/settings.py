@@ -32,6 +32,7 @@ class SmsApiSettings:
 
 @dataclass(frozen=True, slots=True)
 class ExtensionSettings:
+    application_name: str
     urls: list[UrlTarget]
     escalation: EscalationSettings
     polling_interval: int

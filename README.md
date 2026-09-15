@@ -105,19 +105,22 @@ password and JSESSIONID in Dynatrace secret fields; do not commit real values.
 1. In Dynatrace, open **Extensions**, select **URL SMS Plugin**, and add or edit
    a local monitoring configuration.
 2. Select the OneAgent hosts or host group that should perform the URL checks.
-3. Add each target as a complete URL, including its scheme. For example,
+3. Enter the application name. It is included in the `Incident` field of every
+   SMS alert for this monitoring configuration.
+4. Add each target as a complete URL, including its scheme. For example,
    `https://www.google.com`; `www.google.com` is not a valid HTTP client URL.
-4. Configure L1, L2, and L3 recipient lists and increasing L2/L3 delays.
-5. Set a polling interval of 60 seconds or more, redirect limit, and cache
+5. Configure L1, L2, and L3 recipient lists and increasing L2/L3 delays.
+6. Set a polling interval of 60 seconds or more, redirect limit, and cache
    retention period.
-6. Provide the SMS endpoint, username, password, and JSESSIONID. Keep **Dry
+7. Provide the SMS endpoint, username, password, and JSESSIONID. Keep **Dry
    Run** enabled for the first verification; it creates alert decisions without
    sending SMS.
-7. Verify the configuration's **Health** tab and OneAgent logs. Disable Dry Run
+8. Verify the configuration's **Health** tab and OneAgent logs. Disable Dry Run
    only after confirming the monitored URLs and SMS endpoint are reachable.
 
 | Setting | Description |
 | --- | --- |
+| Application Name | Application identifier used in the SMS incident line. |
 | URLs to Monitor | One or more unique complete `http://` or `https://` URLs. |
 | L1, L2, L3 Recipients | Recipient numbers for initial and escalating alerts. |
 | L2/L3 Criticality Delay | Continuous-failure minutes before L2/L3 applies. L3 must exceed L2. |
@@ -175,7 +178,7 @@ The SMS transport will submit a form-encoded `POST` request with:
 The message payload is:
 
 ```text
-Incident: <status message> [<alert level>]
+Incident: <application name> URL Monitoring [<alert level>]
 URL: <configured URL>
 Status: <HTTP or normalized status>
 Time: <IST timestamp>

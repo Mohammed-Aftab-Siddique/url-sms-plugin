@@ -19,6 +19,11 @@ def _validate_urls(settings: ExtensionSettings) -> None:
         raise ConfigurationError("URL values must be unique.")
 
 
+def _validate_application_name(settings: ExtensionSettings) -> None:
+    if not settings.application_name:
+        raise ConfigurationError("Application name cannot be empty.")
+
+
 def _validate_recipients(settings: ExtensionSettings) -> None:
     levels = {
         "L1": settings.escalation.l1,
@@ -67,6 +72,7 @@ def _validate_sms_api(settings: ExtensionSettings) -> None:
 
 def validate_settings(settings: ExtensionSettings) -> None:
     """Validate the cross-field rules not expressible in the activation schema."""
+    _validate_application_name(settings)
     _validate_urls(settings)
     _validate_recipients(settings)
     _validate_timing(settings)

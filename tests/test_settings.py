@@ -6,6 +6,7 @@ from url_sms_plugin.config.validator import ConfigurationError, validate_setting
 
 def valid_config() -> dict:
     return {
+        "applicationName": "Example Application",
         "urls": [{"url": "https://example.com"}],
         "l1Recipients": [{"number": "1111111111"}],
         "l2Recipients": [{"number": "2222222222"}],
@@ -30,6 +31,7 @@ class SettingsTests(unittest.TestCase):
         validate_settings(settings)
 
         self.assertEqual(settings.urls[0].url, "https://example.com")
+        self.assertEqual(settings.application_name, "Example Application")
         self.assertEqual(settings.escalation.l2_after_minutes, 30)
         self.assertEqual(settings.sms_api.cookie_id, "example-cookie")
 
@@ -38,6 +40,13 @@ class SettingsTests(unittest.TestCase):
         config["l3AfterMinutes"] = 30
 
         with self.assertRaisesRegex(ConfigurationError, "L3 criticality delay"):
+            validate_settings(load_settings(config))
+
+    def test_rejects_empty_application_name(self) -> None:
+        config = valid_config()
+        config["applicationName"] = ""
+
+        with self.assertRaisesRegex(ConfigurationError, "Application name"):
             validate_settings(load_settings(config))
 
     def test_rejects_polling_interval_below_sixty_seconds(self) -> None:

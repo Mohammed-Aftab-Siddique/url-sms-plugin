@@ -76,6 +76,10 @@ def load_settings(config: Mapping[str, Any]) -> ExtensionSettings:
         raise ConfigurationError("Activation setting dryRun must be a boolean.")
 
     return ExtensionSettings(
+        application_name=_text(
+            _required(local_config, "applicationName"),
+            "applicationName",
+        ),
         urls=urls,
         escalation=EscalationSettings(
             l1=_recipients(local_config, "l1Recipients"),

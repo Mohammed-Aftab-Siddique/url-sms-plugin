@@ -41,6 +41,19 @@
     "pythonLocal": {
       "type": "object",
       "properties": {
+        "applicationName": {
+          "displayName": "Application Name",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": [
+            {
+              "type": "LENGTH",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          ]
+        },
         "urls": {
           "displayName": "URLs to Monitor",
           "type": "list",
